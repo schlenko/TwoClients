@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TwoClients")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+590a864709d28d2f359464a29b7cc851bb36dabf")]
 [assembly: System.Reflection.AssemblyProductAttribute("TwoClients")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TwoClients")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

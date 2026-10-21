@@ -1,0 +1,107 @@
+@page "/chat"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
+@implements IAsyncDisposable
+
+<PageTitle>Chat</PageTitle>
+
+@if (!_joined)
+{
+    <h3>Enter your username</h3>
+    <div class="mb-2">
+        <input class="form-control" style="max-width:300px"
+               placeholder="Username (required)"
+               @bind="_username" @bind:event="oninput"
+               @onkeydown="OnUsernameKeyDown" />
+    </div>
+    <button class="btn btn-primary" @onclick="JoinAsync"
+            disabled="@string.IsNullOrWhiteSpace(_username)">
+        Join chat
+    </button>
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <p class="text-danger mt-2">@_error</p>
+    }
+}
+else
+{
+    <h3>Chat – you are <strong>@_username</strong></h3>
+
+    <div style="border:1px solid #ccc; height:350px; overflow-y:auto; padding:8px; margin-bottom:8px;">
+        @foreach (var m in _messages)
+        {
+            <div><strong>@m.User:</strong> @m.Text</div>
+        }
+    </div>
+
+    <div class="d-flex gap-2">
+        <input class="form-control" placeholder="Type a message..."
+               @bind="_input" @bind:event="oninput"
+               @onkeydown="OnMessageKeyDown" />
+        <button class="btn btn-primary" @onclick="SendAsync"
+                disabled="@(!IsConnected || string.IsNullOrWhiteSpace(_input))">
+            Send
+        </button>
+    </div>
+}
+
+@code {
+    private HubConnection? _hub;
+    private readonly List<(string User, string Text)> _messages = new();
+    private string _username = "";
+    private string _input = "";
+    private string _error = "";
+    private bool _joined;
+
+    private bool IsConnected => _hub?.State == HubConnectionState.Connected;
+
+    private async Task JoinAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_username)) return;
+
+        _hub = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hub.On<string, string>("ReceiveMessage", (user, message) =>
+        {
+            _messages.Add((user, message));
+            InvokeAsync(StateHasChanged);
+        });
+
+        try
+        {
+            await _hub.StartAsync();
+            _joined = true;
+            _error = "";
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not connect: {ex.Message}";
+        }
+    }
+
+    private async Task SendAsync()
+    {
+        if (_hub is null || string.IsNullOrWhiteSpace(_input)) return;
+        await _hub.SendAsync("SendMessage", _username.Trim(), _input);
+        _input = "";
+    }
+
+    private async Task OnUsernameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await JoinAsync();
+    }
+
+    private async Task OnMessageKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SendAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hub is not null) await _hub.DisposeAsync();
+    }
+}
