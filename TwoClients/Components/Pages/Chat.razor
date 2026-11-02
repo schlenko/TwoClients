@@ -1,7 +1,9 @@
 @page "/chat"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.SignalR.Client
-@inject NavigationManager Navigation
+@using ChatApp.Shared
+@using TwoClients.Services
+@inject ChatApiClient Api
 @implements IAsyncDisposable
 
 <PageTitle>Chat</PageTitle>
@@ -19,10 +21,6 @@
             disabled="@string.IsNullOrWhiteSpace(_username)">
         Join chat
     </button>
-    @if (!string.IsNullOrEmpty(_error))
-    {
-        <p class="text-danger mt-2">@_error</p>
-    }
 }
 else
 {
@@ -31,7 +29,10 @@ else
     <div style="border:1px solid #ccc; height:350px; overflow-y:auto; padding:8px; margin-bottom:8px;">
         @foreach (var m in _messages)
         {
-            <div><strong>@m.User:</strong> @m.Text</div>
+            <div>
+                <small class="text-muted">@m.SentAtUtc.ToLocalTime().ToString("HH:mm")</small>
+                <strong>@m.User:</strong> @m.Text
+            </div>
         }
     </div>
 
@@ -40,54 +41,65 @@ else
                @bind="_input" @bind:event="oninput"
                @onkeydown="OnMessageKeyDown" />
         <button class="btn btn-primary" @onclick="SendAsync"
-                disabled="@(!IsConnected || string.IsNullOrWhiteSpace(_input))">
+                disabled="@string.IsNullOrWhiteSpace(_input)">
             Send
         </button>
     </div>
 }
 
+@if (!string.IsNullOrEmpty(_error))
+{
+    <p class="text-danger mt-2">@_error</p>
+}
+
 @code {
     private HubConnection? _hub;
-    private readonly List<(string User, string Text)> _messages = new();
+    private readonly List<ChatMessage> _messages = new();
     private string _username = "";
     private string _input = "";
     private string _error = "";
     private bool _joined;
 
-    private bool IsConnected => _hub?.State == HubConnectionState.Connected;
-
     private async Task JoinAsync()
     {
         if (string.IsNullOrWhiteSpace(_username)) return;
 
-        _hub = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri("/chathub"))
-            .WithAutomaticReconnect()
-            .Build();
-
-        _hub.On<string, string>("ReceiveMessage", (user, message) =>
-        {
-            _messages.Add((user, message));
-            InvokeAsync(StateHasChanged);
-        });
-
         try
         {
+            // 1. Load history through the API
+            _messages.AddRange(await Api.GetMessagesAsync());
+
+            // 2. Listen for live messages through the hub
+            _hub = new HubConnectionBuilder()
+                .WithUrl(Api.HubUrl)
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hub.On<ChatMessage>(ChatRoutes.ReceiveMethod, message =>
+            {
+                _messages.Add(message);
+                InvokeAsync(StateHasChanged);
+            });
+
             await _hub.StartAsync();
             _joined = true;
             _error = "";
         }
         catch (Exception ex)
         {
-            _error = $"Could not connect: {ex.Message}";
+            _error = $"Could not reach the server: {ex.Message}";
         }
     }
 
     private async Task SendAsync()
     {
-        if (_hub is null || string.IsNullOrWhiteSpace(_input)) return;
-        await _hub.SendAsync("SendMessage", _username.Trim(), _input);
+        if (string.IsNullOrWhiteSpace(_input)) return;
+
+        var text = _input;
         _input = "";
+
+        var ok = await Api.SendAsync(_username.Trim(), text);
+        _error = ok ? "" : "Message could not be sent.";
     }
 
     private async Task OnUsernameKeyDown(KeyboardEventArgs e)

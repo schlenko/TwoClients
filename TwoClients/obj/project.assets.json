@@ -54,6 +54,16 @@
             "related": ".xml"
           }
         }
+      },
+      "ChatApp.Shared/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v10.0",
+        "compile": {
+          "bin/placeholder/ChatApp.Shared.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/ChatApp.Shared.dll": {}
+        }
       }
     }
   },
@@ -143,10 +153,16 @@
         "microsoft.aspnetcore.signalr.client.core.10.0.13.nupkg.sha512",
         "microsoft.aspnetcore.signalr.client.core.nuspec"
       ]
+    },
+    "ChatApp.Shared/1.0.0": {
+      "type": "project",
+      "path": "../ChatApp.Shared/ChatApp.Shared.csproj",
+      "msbuildProject": "../ChatApp.Shared/ChatApp.Shared.csproj"
     }
   },
   "projectFileDependencyGroups": {
     "net10.0": [
+      "ChatApp.Shared >= 1.0.0",
       "Microsoft.AspNetCore.App.Internal.Assets >= 10.0.12",
       "Microsoft.AspNetCore.SignalR.Client >= 10.0.13"
     ]
@@ -177,7 +193,11 @@
         "net10.0": {
           "framework": "net10.0",
           "targetAlias": "net10.0",
-          "projectReferences": {}
+          "projectReferences": {
+            "/home/t/Desktop/TwoClients/ChatApp.Shared/ChatApp.Shared.csproj": {
+              "projectPath": "/home/t/Desktop/TwoClients/ChatApp.Shared/ChatApp.Shared.csproj"
+            }
+          }
         }
       },
       "warningProperties": {

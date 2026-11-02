@@ -1,4 +1,4 @@
-using TwoClients.Hubs;
+using TwoClients.Services;
 using TwoClients.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,7 +7,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddSignalR();
+builder.Services.AddHttpClient<ChatApiClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ChatServer:BaseUrl"]!);
+});
+
 
 var app = builder.Build();
 
@@ -27,7 +31,5 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
-app.MapHub<ChatHub>("/chathub");  
 
 app.Run();
